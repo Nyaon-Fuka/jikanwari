@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>じかんわり - 1DAY管理アプリ</title>
+<meta name="description" content="24時間をカテゴリに配分し、時間帯ごとの計画を立てる1日管理アプリ">
+
+<!-- iPhoneホーム画面対応 -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="じかんわり">
+<meta name="theme-color" content="#2E8B8B">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --paper:#F6F4EF;
+  --paper-raised:#FFFFFF;
+  --ink:#232140;
+  --ink-soft:#5B577A;
+  --ink-faint:#8B87A6;
+  --accent:#2E8B8B;
+  --accent-dark:#22696B;
+  --accent-soft:#DEEFEE;
+  --line:#E3DFD3;
+  --line-strong:#CFC9BA;
+  --warn:#E0574B;
+  --warn-soft:#FBE4E1;
+  --radius-s:10px;
+  --radius-m:16px;
+  --radius-l:24px;
+  --font-display:'Shippori Mincho', serif;
+  --font-body:'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+  --font-mono:'SFMono-Regular', ui-monospace, 'Zen Kaku Gothic New', monospace;
+  --shadow-card: 0 1px 2px rgba(35,33,64,0.06), 0 8px 24px -12px rgba(35,33,64,0.18);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom));
+}
+button{font-family:inherit;}
+input,select{font-family:inherit;}
+:focus-visible{outline:2.5px solid var(--accent); outline-offset:2px;}
+h1,h2,h3{font-family:var(--font-display); margin:0;}
+
+.app-shell{max-width:900px; margin:0 auto; padding:0 16px;}
+
+/* ---------- header ---------- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 0 10px;
+  gap:12px;
+}
+.logo{font-size:22px; font-weight:700; letter-spacing:.02em; color:var(--ink); display:flex; align-items:baseline; gap:8px;}
+.logo-sub{font-family:var(--font-body); font-size:11px; font-weight:500; color:var(--ink-faint); letter-spacing:.08em;}
+.icon-btn{
+  width:38px; height:38px; border-radius:50%;
+  border:1px solid var(--line); background:var(--paper-raised);
+  color:var(--ink-soft); font-size:17px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:var(--shadow-card);
+}
+.icon-btn:active{transform:scale(0.94);}
+
+.date-nav{
+  display:flex; align-items:center; gap:2px;
+  background:var(--paper-raised); border:1px solid var(--line);
+  border-radius:999px; padding:4px; box-shadow:var(--shadow-card);
+}
+.date-nav button{
+  border:none; background:transparent; cursor:pointer; color:var(--ink-soft);
+}
+.date-nav .nav-arrow{width:30px;height:30px;border-radius:50%;font-size:16px;}
+.date-nav .nav-arrow:active{background:var(--accent-soft);}
+.date-label{
+  font-family:var(--font-mono); font-size:14px; font-weight:600; color:var(--ink);
+  padding:0 10px; letter-spacing:.02em; cursor:pointer; background:transparent; border:none;
+}
+.date-label .dow{color:var(--accent-dark); margin-left:2px;}
+
+/* ---------- tabs ---------- */
+.tabs{
+  display:flex; gap:6px; margin:6px 0 18px; background:var(--line);
+  padding:4px; border-radius:999px;
+}
+.tab{
+  flex:1; border:none; background:transparent; padding:10px 8px;
+  border-radius:999px; font-size:13.5px; font-weight:700; color:var(--ink-soft);
+  cursor:pointer; transition:background .15s, color .15s;
+}
+.tab.active{background:var(--ink); color:var(--paper); box-shadow:var(--shadow-card);}
+
+.view{display:none;}
+.view.active{display:block; animation:fadein .25s ease;}
+@keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+/* ---------- onboarding banner ---------- */
+.banner{
+  background:var(--accent-soft); border:1px solid var(--accent);
+  border-radius:var(--radius-m); padding:14px 16px; margin-bottom:16px;
+  font-size:13.5px; color:var(--accent-dark); display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.banner button{
+  border:none; background:var(--accent); color:#fff; font-weight:700;
+  padding:8px 14px; border-radius:999px; font-size:12.5px; cursor:pointer; white-space:nowrap;
+}
+
+/* ---------- dial ---------- */
+.dial-wrap{
+  display:flex; justify-content:center; align-items:center; padding:20px 0 8px;
+  position:relative;
+}
+.dial{
+  position:relative; width:min(58vw, 260px); height:min(58vw, 260px);
+  border-radius:50%;
+}
+.dial-ring{
+  width:100%; height:100%; border-radius:50%;
+  box-shadow: inset 0 0 0 1px rgba(35,33,64,0.05);
+  animation: reveal 1s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes reveal{
+  from{ clip-path: inset(0 0 100% 0); }
+  to{ clip-path: inset(0 0 0 0); }
+}
+.dial-hole{
+  position:absolute; top:16%; left:16%; width:68%; height:68%;
+  background:var(--paper); border-radius:50%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  box-shadow: inset 0 1px 3px rgba(35,33,64,0.08);
+  text-align:center; padding:6px;
+}
+.dial-hole .big{
+  font-family:var(--font-display); font-weight:700; font-size:clamp(20px,5vw,28px); line-height:1.1;
+}
+.dial-hole .small{font-size:11.5px; color:var(--ink-soft); margin-top:4px; letter-spacing:.02em;}
+.dial-hole .warn{color:var(--warn);}
+.dial-tick{
+  position:absolute; left:50%; top:2%; width:3px; height:12%;
+  background:var(--ink); border-radius:3px; transform-origin:50% 400%;
+  opacity:.55;
+}
+.dial-hourmarks{position:absolute; inset:0;}
+.dial-hourmarks span{
+  position:absolute; left:50%; top:50%; font-family:var(--font-mono);
+  font-size:9.5px; color:var(--ink-faint); font-weight:600;
+  transform-origin:0 0;
+}
+
+/* ---------- category rows (budget mode) ---------- */
+.stat-line{
+  text-align:center; font-size:12.5px; color:var(--ink-soft); margin-bottom:14px;
+}
+.cat-list{display:flex; flex-direction:column; gap:8px; margin-bottom:14px;}
+.cat-row{
+  display:flex; align-items:center; gap:10px;
+  background:var(--paper-raised); border:1px solid var(--line);
+  border-radius:var(--radius-m); padding:10px 12px;
+  box-shadow:var(--shadow-card);
+}
+.swatch{width:16px; height:16px; border-radius:50%; flex-shrink:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08);}
+.cat-name{font-weight:700; font-size:14px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.dur-input{display:flex; align-items:center; gap:4px; flex-shrink:0;}
+.dur-input input{
+  width:38px; text-align:center; border:1px solid var(--line); border-radius:8px;
+  padding:6px 2px; font-family:var(--font-mono); font-size:13px; background:var(--paper);
+}
+.dur-input span{font-size:11.5px; color:var(--ink-faint);}
+
+.add-color-btn{
+  width:100%; border:1.5px dashed var(--line-strong); background:transparent;
+  color:var(--ink-soft); border-radius:var(--radius-m); padding:12px;
+  font-size:13px; font-weight:600; cursor:pointer; margin-bottom:24px;
+}
+.add-color-btn:active{background:var(--accent-soft);}
+
+/* ---------- plan mode ---------- */
+.plan-toggle{display:flex; gap:6px; margin-bottom:14px; justify-content:center;}
+.plan-toggle button{
+  border:1px solid var(--line); background:var(--paper-raised); color:var(--ink-soft);
+  padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:700; cursor:pointer;
+}
+.plan-toggle button.active{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+
+.chip-row{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 16px;}
+.chip{
+  display:flex; align-items:center; gap:7px; padding:7px 12px 7px 8px;
+  border-radius:999px; background:var(--paper-raised); border:1px solid var(--line);
+  font-size:12px; font-weight:700; color:var(--ink-soft);
+}
+.chip .swatch{width:9px; height:9px;}
+.chip.over{color:var(--warn); border-color:var(--warn);}
+
+.add-plan-btn{
+  width:100%; border:none; background:var(--accent); color:#fff; font-weight:700;
+  padding:13px; border-radius:var(--radius-m); font-size:14px; cursor:pointer; margin-bottom:14px;
+  box-shadow:var(--shadow-card);
+}
+.add-plan-btn:active{background:var(--accent-dark);}
+
+.plan-form{
+  background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--radius-m);
+  padding:14px; margin-bottom:16px; box-shadow:var(--shadow-card);
+}
+.plan-form label{font-size:11.5px; font-weight:700; color:var(--ink-soft); display:block; margin:10px 0 5px;}
+.plan-form label:first-child{margin-top:0;}
+.time-row{display:flex; align-items:center; gap:8px;}
+.time-row input[type=time]{
+  flex:1; border:1px solid var(--line); border-radius:8px; padding:9px; font-family:var(--font-mono); font-size:14px;
+}
+.time-row .to{color:var(--ink-faint); font-size:13px;}
+.plan-form input[type=text]{
+  width:100%; border:1px solid var(--line); border-radius:8px; padding:9px; font-size:14px;
+}
+.form-actions{display:flex; gap:8px; margin-top:14px;}
+.form-actions button{flex:1; border-radius:999px; padding:11px; font-weight:700; font-size:13.5px; cursor:pointer;}
+.btn-primary{border:none; background:var(--ink); color:var(--paper);}
+.btn-ghost{border:1px solid var(--line); background:transparent; color:var(--ink-soft);}
+.form-error{color:var(--warn); font-size:12px; margin-top:6px;}
+
+.plan-list{display:flex; flex-direction:column; gap:8px;}
+.plan-item{
+  display:flex; align-items:center; gap:10px;
+  background:var(--paper-raised); border:1px solid var(--line);
+  border-radius:var(--radius-m); padding:10px 12px; box-shadow:var(--shadow-card);
+}
+.plan-item.done{opacity:.55;}
+.plan-item.done .plan-label{text-decoration:line-through; text-decoration-color:var(--ink-faint);}
+.plan-time{font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); white-space:nowrap; flex-shrink:0;}
+.plan-label{font-weight:700; font-size:14px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.chk-wrap{display:flex; align-items:center; flex-shrink:0;}
+.chk-wrap input{width:19px; height:19px; accent-color:var(--accent); cursor:pointer;}
+.del-btn{border:none; background:transparent; color:var(--ink-faint); font-size:16px; cursor:pointer; flex-shrink:0; padding:4px;}
+
+.timeline{
+  position:relative; border-top:1px solid var(--line);
+}
+.timeline-hour{
+  position:relative; height:44px; border-bottom:1px solid var(--line);
+  display:flex;
+}
+.timeline-hour-label{
+  width:44px; flex-shrink:0; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint);
+  padding-top:2px; text-align:right; padding-right:8px;
+}
+.timeline-track{flex:1; position:relative;}
+.timeline-now{
+  position:absolute; left:0; right:0; height:2px; background:var(--warn); z-index:5;
+}
+.timeline-now::before{
+  content:''; position:absolute; left:-3px; top:-3px; width:8px; height:8px; border-radius:50%; background:var(--warn);
+}
+.tblock{
+  position:absolute; left:2px; right:2px; border-radius:7px;
+  padding:3px 7px; font-size:11px; font-weight:700; color:#fff; overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,0.15); line-height:1.3; z-index:2;
+}
+.tblock.done{opacity:.5; text-decoration:line-through;}
+
+.empty-state{
+  text-align:center; padding:36px 20px; color:var(--ink-soft);
+}
+.empty-state .em-title{font-family:var(--font-display); font-size:17px; margin-bottom:8px; color:var(--ink);}
+.empty-state button{
+  margin-top:14px; border:none; background:var(--ink); color:var(--paper);
+  padding:10px 18px; border-radius:999px; font-weight:700; font-size:13px; cursor:pointer;
+}
+
+/* ---------- calendar ---------- */
+.cal-controls{display:flex; flex-direction:column; gap:10px; margin-bottom:16px;}
+.cal-scale{display:flex; gap:6px; background:var(--line); padding:4px; border-radius:999px;}
+.cal-scale button{
+  flex:1; border:none; background:transparent; padding:8px; border-radius:999px;
+  font-size:12.5px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+}
+.cal-scale button.active{background:var(--ink); color:var(--paper);}
+.cal-nav{display:flex; align-items:center; justify-content:center; gap:14px;}
+.cal-nav button{
+  border:1px solid var(--line); background:var(--paper-raised); width:32px; height:32px; border-radius:50%;
+  cursor:pointer; color:var(--ink-soft);
+}
+.cal-nav span{font-family:var(--font-display); font-weight:700; font-size:15.5px;}
+
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+.cal-dow{text-align:center; font-size:11px; color:var(--ink-faint); font-weight:700; padding-bottom:2px;}
+.cal-day{
+  aspect-ratio:1; border:1px solid var(--line); background:var(--paper-raised); border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  cursor:pointer; position:relative; padding:4px;
+}
+.cal-day.today{border:2px solid var(--accent);}
+.cal-day.selected{background:var(--ink);}
+.cal-day.selected .cal-daynum{color:var(--paper);}
+.cal-day.other-month{opacity:.32;}
+.cal-daynum{font-family:var(--font-mono); font-size:12.5px; font-weight:700;}
+.cal-dot-ring{width:20px; height:20px; border-radius:50%;}
+.cal-day.compact{gap:2px;}
+.cal-plan-dot{width:5px; height:5px; border-radius:50%; background:var(--accent); position:absolute; bottom:5px;}
+
+.week-row .cal-grid{grid-template-columns:repeat(7,1fr);}
+.threemonth-wrap{display:flex; flex-direction:column; gap:22px;}
+.threemonth-wrap h3{font-size:14px; margin-bottom:8px; text-align:center;}
+
+/* ---------- day sheet / modal ---------- */
+.overlay{
+  position:fixed; inset:0; background:rgba(32,33,64,0.42);
+  display:flex; align-items:flex-end; justify-content:center; z-index:100;
+  animation:fadein2 .18s ease;
+}
+@keyframes fadein2{from{opacity:0;} to{opacity:1;}}
+.sheet{
+  background:var(--paper); width:100%; max-width:520px; border-radius:22px 22px 0 0;
+  padding:18px 18px calc(20px + env(safe-area-inset-bottom));
+  max-height:86vh; overflow-y:auto; box-shadow:0 -8px 30px rgba(0,0,0,0.2);
+}
+@media (min-width:640px){
+  .overlay{align-items:center;}
+  .sheet{border-radius:22px; max-height:80vh;}
+}
+.sheet-handle{width:36px; height:4px; background:var(--line-strong); border-radius:4px; margin:0 auto 14px;}
+.sheet h2{font-size:17px; margin-bottom:14px;}
+.sheet-close{
+  position:absolute; top:14px; right:16px; border:none; background:transparent;
+  font-size:20px; color:var(--ink-faint); cursor:pointer;
+}
+.sheet-row{position:relative;}
+
+.action-btn{
+  width:100%; text-align:left; border:1px solid var(--line); background:var(--paper-raised);
+  border-radius:var(--radius-m); padding:14px; font-size:14px; font-weight:700; color:var(--ink);
+  cursor:pointer; margin-bottom:9px; display:flex; align-items:center; gap:10px;
+}
+.action-btn .ico{font-size:17px;}
+.action-btn.warn-btn{color:var(--warn); border-color:var(--warn-soft);}
+
+.settings-row{
+  display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line);
+}
+.settings-row:last-child{border-bottom:none;}
+.settings-row input{
+  flex:1; border:1px solid var(--line); border-radius:8px; padding:9px; font-size:14px;
+}
+
+.copy-options{display:flex; flex-direction:column; gap:10px; margin:12px 0;}
+.opt-card{
+  border:1.5px solid var(--line); border-radius:var(--radius-m); padding:12px; cursor:pointer;
+}
+.opt-card.selected{border-color:var(--accent); background:var(--accent-soft);}
+.opt-card b{display:block; font-size:13.5px; margin-bottom:2px;}
+.opt-card small{color:var(--ink-soft); font-size:11.5px;}
+.opt-body{margin-top:10px; display:none;}
+.opt-card.selected .opt-body{display:block;}
+.weekday-picker{display:flex; gap:5px; flex-wrap:wrap; margin:8px 0;}
+.weekday-picker button{
+  width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--paper-raised);
+  font-size:12px; font-weight:700; cursor:pointer; color:var(--ink-soft);
+}
+.weekday-picker button.active{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+.range-row{display:flex; align-items:center; gap:8px; margin:6px 0;}
+.range-row input[type=date]{flex:1; border:1px solid var(--line); border-radius:8px; padding:8px; font-size:13px;}
+.multi-cal{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-top:8px;}
+.multi-cal .cal-day{aspect-ratio:1; font-size:11px;}
+.checkbox-row{display:flex; align-items:center; gap:8px; margin:10px 0; font-size:13px; color:var(--ink-soft);}
+.checkbox-row input{width:18px; height:18px; accent-color:var(--accent);}
+
+.toast{
+  position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+  background:var(--ink); color:var(--paper); padding:12px 20px; border-radius:999px;
+  font-size:13px; font-weight:600; z-index:200; box-shadow:0 8px 24px rgba(0,0,0,0.25);
+  opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+
+.section-title{font-size:13px; font-weight:700; color:var(--ink-soft); margin:18px 0 10px; letter-spacing:.03em;}
+
+footer.app-footer{
+  text-align:center; padding:26px 0 10px; font-size:11px; color:var(--ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce){
+  .dial-ring{animation:none;}
+  .view.active{animation:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <header class="topbar">
+    <h1 class="logo">じかんわり<span class="logo-sub">1DAY管理</span></h1>
+    <div class="date-nav">
+      <button class="nav-arrow" id="prevDay" aria-label="前の日">‹</button>
+      <button class="date-label" id="dateLabelBtn"></button>
+      <button class="nav-arrow" id="nextDay" aria-label="次の日">›</button>
+    </div>
+    <button class="icon-btn" id="settingsBtn" aria-label="カテゴリ設定">⚙</button>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="budget" role="tab">わけわけタイム</button>
+    <button class="tab" data-tab="plan" role="tab">じかんわり計画</button>
+    <button class="tab" data-tab="calendar" role="tab">カレンダー</button>
+  </nav>
+
+  <div id="onboardBanner" class="banner" hidden>
+    <span>はじめに、⚙設定 から色に名前をつけましょう（例：睡眠・仕事・食事）</span>
+    <button id="onboardBtn">設定する</button>
+  </div>
+
+  <main>
+    <!-- ① わけわけタイム -->
+    <section id="view-budget" class="view active">
+      <div class="dial-wrap">
+        <div class="dial" id="budgetDial">
+          <div class="dial-hourmarks" id="budgetHourmarks"></div>
+          <div class="dial-ring" id="budgetRing"></div>
+          <div class="dial-hole">
+            <div class="big" id="budgetRemainBig">24時間00分</div>
+            <div class="small" id="budgetRemainSmall">今日の残り</div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-line" id="budgetStatLine"></div>
+
+      <div class="cat-list" id="budgetCatList"></div>
+      <button class="add-color-btn" id="addColorBtn">＋ 未使用の色を名づけて追加</button>
+    </section>
+
+    <!-- ② じかんわり計画 -->
+    <section id="view-plan" class="view">
+      <div class="plan-toggle">
+        <button class="active" data-view="circle">◎ 円グラフ</button>
+        <button data-view="timeline">☰ タイムライン</button>
+      </div>
+
+      <div id="planCircleWrap">
+        <div class="dial-wrap">
+          <div class="dial" id="planDial">
+            <div class="dial-hourmarks" id="planHourmarks"></div>
+            <div class="dial-ring" id="planRing"></div>
+            <div id="planNowTick" class="dial-tick" hidden></div>
+            <div class="dial-hole">
+              <div class="big" id="planPlannedBig">0時間00分</div>
+              <div class="small">計画済み</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="planTimelineWrap" style="display:none;">
+        <div class="timeline" id="timelineEl"></div>
+      </div>
+
+      <div class="chip-row" id="planChips"></div>
+
+      <button class="add-plan-btn" id="addPlanBtn">＋ 予定を追加</button>
+
+      <form class="plan-form" id="planForm" hidden>
+        <label>カテゴリ</label>
+        <div class="chip-row" id="planCatChips"></div>
+
+        <label>時間帯</label>
+        <div class="time-row">
+          <input type="time" id="planStart" required>
+          <span class="to">〜</span>
+          <input type="time" id="planEnd" required>
+        </div>
+
+        <label>メモ（空欄でカテゴリ名になります）</label>
+        <input type="text" id="planLabel" placeholder="例：資格の勉強">
+
+        <div class="form-error" id="planFormError" hidden></div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-ghost" id="cancelPlanBtn">キャンセル</button>
+          <button type="submit" class="btn-primary">追加する</button>
+        </div>
+      </form>
+
+      <div id="planListWrap">
+        <div class="section-title">今日の予定</div>
+        <div class="plan-list" id="planList"></div>
+      </div>
+    </section>
+
+    <!-- ③ カレンダー -->
+    <section id="view-calendar" class="view">
+      <div class="cal-controls">
+        <div class="cal-scale">
+          <button class="active" data-scale="week">週</button>
+          <button data-scale="month">月</button>
+          <button data-scale="3month">3ヶ月</button>
+        </div>
+        <div class="cal-nav">
+          <button id="calPrev">‹</button>
+          <span id="calLabel"></span>
+          <button id="calNext">›</button>
+        </div>
+      </div>
+      <div id="calBody"></div>
+    </section>
+  </main>
+
+  <footer class="app-footer">じかんわり — 24時間をわけて、計画して、暮らす</footer>
+</div>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ 定数・データ定義 ============ */
+const PALETTE = [
+  "#E4572E","#F2A541","#F2CB49","#8FB339",
+  "#3F9C6D","#2E8B8B","#3E78B2","#5C6BC0",
+  "#8258A3","#C458A3","#A9A9A9","#6B4F3B"
+];
+const LS_CATS = "jkw_categories_v1";
+const LS_BUDGETS = "jkw_budgets_v1";
+const LS_PLANS = "jkw_plans_v1";
+const WEEKDAY_JP = ["日","月","火","水","木","金","土"];
+
+/* ============ ユーティリティ ============ */
+function pad2(n){ return String(n).padStart(2,"0"); }
+function dateToStr(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function strToDate(s){ const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
+function todayStr(){ return dateToStr(new Date()); }
+function addDaysStr(s, n){ const d = strToDate(s); d.setDate(d.getDate()+n); return dateToStr(d); }
+function formatJPDate(s){
+  const d = strToDate(s);
+  return `${d.getMonth()+1}月${d.getDate()}日`;
+}
+function formatJPDow(s){ return WEEKDAY_JP[strToDate(s).getDay()]; }
+function minutesToHM(min){
+  const m = Math.round(min);
+  const h = Math.floor(Math.abs(m)/60), mm = Math.abs(m)%60;
+  const sign = m<0 ? "-" : "";
+  if(h===0) return `${sign}${mm}分`;
+  if(mm===0) return `${sign}${h}時間`;
+  return `${sign}${h}時間${mm}分`;
+}
+function timeStrToMinutes(t){ const [h,m] = t.split(":").map(Number); return h*60+m; }
+function minutesToTimeStr(min){ return `${pad2(Math.floor(min/60))}:${pad2(min%60)}`; }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function loadJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return fallback;
+    return JSON.parse(raw);
+  }catch(e){ return fallback; }
+}
+function saveJSON(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){ /* storage full/blocked: ignore */ }
+}
+
+/* ============ 状態 ============ */
+let categories = loadJSON(LS_CATS, null);
+if(!categories){
+  categories = PALETTE.map((c,i)=>({ id:"c"+(i+1), color:c, name:"" }));
+  saveJSON(LS_CATS, categories);
+}
+let budgets = loadJSON(LS_BUDGETS, {});
+let plans = loadJSON(LS_PLANS, {});
+
+/* 過去分の「予定」は保持しない：起動のたびに前日以前を削除 */
+(function purgeOldPlans(){
+  const today = todayStr();
+  let changed = false;
+  for(const dateKey of Object.keys(plans)){
+    if(dateKey < today){ delete plans[dateKey]; changed = true; }
+  }
+  if(changed) saveJSON(LS_PLANS, plans);
+})();
+
+let currentDate = todayStr();
+let currentTab = "budget";
+let planViewMode = "circle";
+let calScale = "week";
+let calAnchor = todayStr(); // 表示中の週/月/3ヶ月の基準日
+let calSelectedDate = null;
+
+/* ============ カテゴリ関連ヘルパー ============ */
+function getCat(id){ return categories.find(c=>c.id===id); }
+function namedCats(){ return categories.filter(c=>c.name && c.name.trim()!==""); }
+
+/* ============ 予算(①)関連 ============ */
+function getBudgetsFor(date){ return budgets[date] || {}; }
+function setBudgetMinutes(date, catId, minutes){
+  if(!budgets[date]) budgets[date] = {};
+  if(minutes<=0){ delete budgets[date][catId]; }
+  else{ budgets[date][catId] = minutes; }
+  if(Object.keys(budgets[date]).length===0) delete budgets[date];
+  saveJSON(LS_BUDGETS, budgets);
+}
+function totalBudgetMinutes(date){
+  const b = getBudgetsFor(date);
+  return Object.values(b).reduce((a,x)=>a+x,0);
+}
+
+/* ============ 計画(②)関連 ============ */
+function getPlansFor(date){ return plans[date] || []; }
+function addPlanItem(date, item){
+  if(!plans[date]) plans[date]=[];
+  plans[date].push(item);
+  saveJSON(LS_PLANS, plans);
+}
+function removePlanItem(date, id){
+  if(!plans[date]) return;
+  plans[date] = plans[date].filter(p=>p.id!==id);
+  if(plans[date].length===0) delete plans[date];
+  saveJSON(LS_PLANS, plans);
+}
+function togglePlanDone(date, id){
+  const item = (plans[date]||[]).find(p=>p.id===id);
+  if(item){ item.done = !item.done; saveJSON(LS_PLANS, plans); }
+}
+function plannedMinutesForCat(date, catId){
+  return getPlansFor(date).filter(p=>p.catId===catId).reduce((a,p)=>a+(p.end-p.start),0);
+}
+function totalPlannedMinutes(date){
+  return getPlansFor(date).reduce((a,p)=>a+(p.end-p.start),0);
+}
+
+/* ============ 分配列 → conic-gradient ============ */
+function buildBudgetArray(date){
+  const arr = new Array(1440).fill(null);
+  const b = getBudgetsFor(date);
+  let idx = 0;
+  for(const cat of categories){
+    const m = b[cat.id] || 0;
+    for(let i=0;i<m && idx<1440;i++, idx++) arr[idx] = cat.color;
+  }
+  return arr;
+}
+function buildPlanArray(date){
+  const arr = new Array(1440).fill(null);
+  const items = [...getPlansFor(date)].sort((a,b)=>a.start-b.start);
+  for(const it of items){
+    const cat = getCat(it.catId);
+    if(!cat) continue;
+    for(let m=Math.max(0,it.start); m<Math.min(1440,it.end); m++) arr[m]=cat.color;
+  }
+  return arr;
+}
+function arrayToConicGradient(arr){
+  const base = "var(--line)";
+  const stops = [];
+  let cur = arr[0] || base;
+  let startIdx = 0;
+  for(let i=1;i<=arr.length;i++){
+    const c = i<arr.length ? (arr[i]||base) : null;
+    if(c!==cur){
+      const p0 = (startIdx/1440*100).toFixed(3);
+      const p1 = (i/1440*100).toFixed(3);
+      stops.push(`${cur} ${p0}% ${p1}%`);
+      cur = c; startIdx = i;
+    }
+  }
+  return `conic-gradient(from 0deg, ${stops.join(", ")})`;
+}
+function renderHourmarks(el){
+  el.innerHTML = "";
+  for(let h=0; h<24; h+=3){
+    const angle = (h/24)*360;
+    const span = document.createElement("span");
+    span.textContent = h;
+    span.style.transform = `rotate(${angle}deg) translate(0, -${"46%"}) rotate(${-angle}deg) translate(-50%,-50%)`;
+    // 上の transform は近似。実際は下で再計算する。
+    el.appendChild(span);
+  }
+  // 正確な配置をJSで計算
+  const rect = el.getBoundingClientRect();
+  const r = (rect.width || 260) * 0.46;
+  Array.from(el.children).forEach((span, i)=>{
+    const h = i*3;
+    const angle = (h/24)*360 - 90; // -90 で 0時=真上
+    const rad = angle*Math.PI/180;
+    const x = 50 + (r/(rect.width||260)*100)*Math.cos(rad);
+    const y = 50 + (r/(rect.height||260)*100)*Math.sin(rad);
+    span.style.transform = "translate(-50%,-50%)";
+    span.style.left = x+"%";
+    span.style.top = y+"%";
+  });
+}
+
+/* ============ トースト ============ */
+let toastTimer=null;
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+
+/* ============ ヘッダー描画 ============ */
+function renderHeader(){
+  const btn = document.getElementById("dateLabelBtn");
+  const isToday = currentDate===todayStr();
+  btn.innerHTML = `${formatJPDate(currentDate)}<span class="dow">(${formatJPDow(currentDate)})</span>${isToday? " ・今日":""}`;
+}
+
+/* ============ ①わけわけタイム 描画 ============ */
+function renderBudgetView(){
+  const arr = buildBudgetArray(currentDate);
+  document.getElementById("budgetRing").style.background = arrayToConicGradient(arr);
+  renderHourmarks(document.getElementById("budgetHourmarks"));
+
+  const total = totalBudgetMinutes(currentDate);
+  const remain = 1440 - total;
+  const bigEl = document.getElementById("budgetRemainBig");
+  const smallEl = document.getElementById("budgetRemainSmall");
+  if(remain>=0){
+    bigEl.textContent = minutesToHM(remain);
+    bigEl.classList.remove("warn");
+    smallEl.textContent = "今日の残り";
+  }else{
+    bigEl.textContent = minutesToHM(-remain);
+    bigEl.classList.add("warn");
+    smallEl.textContent = "24時間をオーバー";
+  }
+  document.getElementById("budgetStatLine").textContent =
+    `配分済み ${minutesToHM(total)} / 24時間00分`;
+
+  const list = document.getElementById("budgetCatList");
+  list.innerHTML = "";
+  const named = namedCats();
+  const onboard = document.getElementById("onboardBanner");
+  onboard.hidden = named.length>0;
+
+  const b = getBudgetsFor(currentDate);
+  named.forEach(cat=>{
+    const mins = b[cat.id]||0;
+    const row = document.createElement("div");
+    row.className = "cat-row";
+    row.innerHTML = `
+      <span class="swatch" style="background:${cat.color}"></span>
+      <span class="cat-name">${escapeHtml(cat.name)}</span>
+      <div class="dur-input">
+        <input type="number" class="dur-h" min="0" max="24" value="${Math.floor(mins/60)}"> <span>時間</span>
+        <input type="number" class="dur-m" min="0" max="59" step="5" value="${mins%60}"> <span>分</span>
+      </div>`;
+    const hInput = row.querySelector(".dur-h");
+    const mInput = row.querySelector(".dur-m");
+    function commit(){
+      let h = clamp(parseInt(hInput.value||"0",10)||0, 0, 48);
+      let m = clamp(parseInt(mInput.value||"0",10)||0, 0, 59);
+      setBudgetMinutes(currentDate, cat.id, h*60+m);
+      renderBudgetView();
+      if(currentTab==="plan") renderPlanView();
+    }
+    hInput.addEventListener("change", commit);
+    mInput.addEventListener("change", commit);
+    list.appendChild(row);
+  });
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ============ ②じかんわり計画 描画 ============ */
+function renderPlanView(){
+  const items = getPlansFor(currentDate);
+
+  // 円グラフ / タイムライン 切替の見た目
+  document.getElementById("planCircleWrap").style.display = planViewMode==="circle" ? "" : "none";
+  document.getElementById("planTimelineWrap").style.display = planViewMode==="timeline" ? "" : "none";
+
+  if(planViewMode==="circle"){
+    const arr = buildPlanArray(currentDate);
+    document.getElementById("planRing").style.background = arrayToConicGradient(arr);
+    renderHourmarks(document.getElementById("planHourmarks"));
+    const tick = document.getElementById("planNowTick");
+    if(currentDate===todayStr()){
+      const now = new Date();
+      const nowMin = now.getHours()*60+now.getMinutes();
+      tick.hidden = false;
+      tick.style.transform = `rotate(${(nowMin/1440*360)}deg)`;
+    }else{
+      tick.hidden = true;
+    }
+  }else{
+    renderTimeline(items);
+  }
+
+  document.getElementById("planPlannedBig").textContent = minutesToHM(totalPlannedMinutes(currentDate));
+
+  // カテゴリチップ（予算に対する残り）
+  const chipWrap = document.getElementById("planChips");
+  chipWrap.innerHTML = "";
+  const b = getBudgetsFor(currentDate);
+  const activeCats = categories.filter(c=>c.name && (b[c.id]||0)>0);
+  if(activeCats.length===0){
+    chipWrap.innerHTML = `<span style="font-size:12px;color:var(--ink-faint);">①わけわけタイムで時間を配分すると、ここに残り時間が出ます</span>`;
+  }else{
+    activeCats.forEach(cat=>{
+      const budget = b[cat.id]||0;
+      const planned = plannedMinutesForCat(currentDate, cat.id);
+      const remain = budget - planned;
+      const chip = document.createElement("span");
+      chip.className = "chip" + (remain<0 ? " over" : "");
+      chip.innerHTML = `<span class="swatch" style="background:${cat.color}"></span>${escapeHtml(cat.name)} ${remain>=0? "あと"+minutesToHM(remain) : minutesToHM(-remain)+"オーバー"}`;
+      chipWrap.appendChild(chip);
+    });
+  }
+
+  // 予定追加フォームのカテゴリチップ
+  const catChips = document.getElementById("planCatChips");
+  catChips.innerHTML = "";
+  const named = namedCats();
+  if(named.length===0){
+    catChips.innerHTML = `<span style="font-size:12px;color:var(--ink-faint);">先に⚙設定で色に名前をつけてください</span>`;
+  }else{
+    named.forEach((cat,i)=>{
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip" + (i===0 && !chip.dataset.picked ? "" : "");
+      chip.dataset.catid = cat.id;
+      chip.innerHTML = `<span class="swatch" style="background:${cat.color}"></span>${escapeHtml(cat.name)}`;
+      chip.addEventListener("click", ()=>{
+        Array.from(catChips.children).forEach(c=>c.style.outline="");
+        chip.style.outline = `2px solid ${cat.color}`;
+        catChips.dataset.selected = cat.id;
+      });
+      catChips.appendChild(chip);
+    });
+    if(!catChips.dataset.selected){
+      catChips.dataset.selected = named[0].id;
+      catChips.firstChild.style.outline = `2px solid ${named[0].color}`;
+    }
+  }
+
+  // 予定リスト
+  const listEl = document.getElementById("planList");
+  listEl.innerHTML = "";
+  const listWrap = document.getElementById("planListWrap");
+  if(items.length===0){
+    listWrap.style.display = planViewMode==="timeline" ? "none" : "";
+    if(planViewMode!=="timeline"){
+      listEl.innerHTML = `<div class="empty-state" style="padding:20px;"><div class="em-title">まだ予定がありません</div>「＋ 予定を追加」から今日の計画を立てましょう</div>`;
+    }
+  }else{
+    listWrap.style.display = "";
+    const sorted = [...items].sort((a,b)=>a.start-b.start);
+    sorted.forEach(it=>{
+      const cat = getCat(it.catId);
+      const row = document.createElement("div");
+      row.className = "plan-item" + (it.done ? " done" : "");
+      row.innerHTML = `
+        <span class="swatch" style="background:${cat?cat.color:"#ccc"}"></span>
+        <span class="plan-time">${minutesToTimeStr(it.start)}-${minutesToTimeStr(it.end)}</span>
+        <span class="plan-label">${escapeHtml(it.label || (cat?cat.name:""))}</span>
+        <label class="chk-wrap"><input type="checkbox" ${it.done?"checked":""}></label>
+        <button class="del-btn" aria-label="削除">✕</button>`;
+      row.querySelector("input[type=checkbox]").addEventListener("change", ()=>{
+        togglePlanDone(currentDate, it.id);
+        renderPlanView();
+      });
+      row.querySelector(".del-btn").addEventListener("click", ()=>{
+        removePlanItem(currentDate, it.id);
+        renderPlanView();
+      });
+      listEl.appendChild(row);
+    });
+  }
+}
+
+function renderTimeline(items){
+  const el = document.getElementById("timelineEl");
+  el.innerHTML = "";
+  for(let h=0; h<24; h++){
+    const hourRow = document.createElement("div");
+    hourRow.className = "timeline-hour";
+    hourRow.innerHTML = `<div class="timeline-hour-label">${pad2(h)}:00</div><div class="timeline-track" data-hour="${h}"></div>`;
+    el.appendChild(hourRow);
+  }
+  const tracks = el.querySelectorAll(".timeline-track");
+  const HOUR_H = 44;
+
+  items.forEach(it=>{
+    const cat = getCat(it.catId);
+    const top = (it.start%60)/60*HOUR_H;
+    const startHour = Math.floor(it.start/60);
+    const height = Math.max(18, (it.end-it.start)/60*HOUR_H);
+    const track = tracks[startHour];
+    if(!track) return;
+    const block = document.createElement("div");
+    block.className = "tblock" + (it.done? " done":"");
+    block.style.top = top+"px";
+    block.style.height = height+"px";
+    block.style.background = cat? cat.color : "#999";
+    block.textContent = it.label || (cat?cat.name:"");
+    block.title = `${minutesToTimeStr(it.start)}-${minutesToTimeStr(it.end)} ${it.label||""}`;
+    track.appendChild(block);
+  });
+
+  if(currentDate===todayStr()){
+    const now = new Date();
+    const nowMin = now.getHours()*60+now.getMinutes();
+    const hour = Math.floor(nowMin/60);
+    const track = tracks[hour];
+    if(track){
+      const nowLine = document.createElement("div");
+      nowLine.className = "timeline-now";
+      nowLine.style.top = ((nowMin%60)/60*HOUR_H)+"px";
+      track.appendChild(nowLine);
+      setTimeout(()=>{ track.scrollIntoView && el.scrollTo({top: hour*HOUR_H - 80, behavior:"smooth"}); }, 50);
+    }
+  }
+}
+
+/* ============ カレンダー 描画 ============ */
+function calDotStyle(date){
+  const arr = buildBudgetArray(date);
+  const total = totalBudgetMinutes(date);
+  if(total===0) return "background:var(--line);";
+  return `background:${arrayToConicGradient(arr)};`;
+}
+function renderCalendar(){
+  document.getElementById("calBody").innerHTML = "";
+  if(calScale==="week") renderCalWeek();
+  else if(calScale==="month") renderCalMonth();
+  else renderCalThreeMonth();
+}
+function weekDaysAround(anchorStr){
+  const d = strToDate(anchorStr);
+  const dow = d.getDay();
+  const start = new Date(d); start.setDate(d.getDate()-dow);
+  const days = [];
+  for(let i=0;i<7;i++){ const x=new Date(start); x.setDate(start.getDate()+i); days.push(dateToStr(x)); }
+  return days;
+}
+function renderCalWeek(){
+  const days = weekDaysAround(calAnchor);
+  document.getElementById("calLabel").textContent = `${formatJPDate(days[0])} 〜 ${formatJPDate(days[6])}`;
+  const body = document.getElementById("calBody");
+  const grid = document.createElement("div");
+  grid.className = "cal-grid";
+  WEEKDAY_JP.forEach(w=>{
+    const el = document.createElement("div"); el.className="cal-dow"; el.textContent=w; grid.appendChild(el);
+  });
+  days.forEach(dstr=>grid.appendChild(makeCalDayCell(dstr, true)));
+  body.appendChild(grid);
+}
+function monthMatrix(anchorStr){
+  const d = strToDate(anchorStr);
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const startDow = first.getDay();
+  const gridStart = new Date(first); gridStart.setDate(first.getDate()-startDow);
+  const days = [];
+  for(let i=0;i<42;i++){ const x=new Date(gridStart); x.setDate(gridStart.getDate()+i); days.push(dateToStr(x)); }
+  return { days, month: d.getMonth() };
+}
+function renderCalMonth(){
+  const d = strToDate(calAnchor);
+  document.getElementById("calLabel").textContent = `${d.getFullYear()}年${d.getMonth()+1}月`;
+  const { days, month } = monthMatrix(calAnchor);
+  const body = document.getElementById("calBody");
+  const grid = document.createElement("div");
+  grid.className = "cal-grid";
+  WEEKDAY_JP.forEach(w=>{
+    const el = document.createElement("div"); el.className="cal-dow"; el.textContent=w; grid.appendChild(el);
+  });
+  days.forEach(dstr=>{
+    const cell = makeCalDayCell(dstr, false);
+    if(strToDate(dstr).getMonth()!==month) cell.classList.add("other-month");
+    grid.appendChild(cell);
+  });
+  body.appendChild(grid);
+}
+function renderCalThreeMonth(){
+  const d0 = strToDate(calAnchor);
+  document.getElementById("calLabel").textContent = `${d0.getFullYear()}年${d0.getMonth()+1}月〜`;
+  const body = document.getElementById("calBody");
+  const wrap = document.createElement("div");
+  wrap.className = "threemonth-wrap";
+  for(let k=0;k<3;k++){
+    const d = new Date(d0.getFullYear(), d0.getMonth()+k, 1);
+    const anchor = dateToStr(d);
+    const { days, month } = monthMatrix(anchor);
+    const block = document.createElement("div");
+    const h = document.createElement("h3");
+    h.textContent = `${d.getFullYear()}年${d.getMonth()+1}月`;
+    block.appendChild(h);
+    const grid = document.createElement("div");
+    grid.className = "cal-grid";
+    WEEKDAY_JP.forEach(w=>{
+      const el = document.createElement("div"); el.className="cal-dow"; el.textContent=w; grid.appendChild(el);
+    });
+    days.forEach(dstr=>{
+      const cell = makeCalDayCell(dstr, true);
+      if(strToDate(dstr).getMonth()!==month) cell.classList.add("other-month");
+      grid.appendChild(cell);
+    });
+    block.appendChild(grid);
+    wrap.appendChild(block);
+  }
+  body.appendChild(wrap);
+}
+function makeCalDayCell(dstr, compact){
+  const cell = document.createElement("button");
+  cell.className = "cal-day" + (compact?" compact":"") + (dstr===todayStr()?" today":"");
+  const d = strToDate(dstr);
+  cell.innerHTML = `<span class="cal-daynum">${d.getDate()}</span><span class="cal-dot-ring" style="${calDotStyle(dstr)}"></span>`;
+  if((plans[dstr]||[]).length>0){
+    const dot = document.createElement("span");
+    dot.className = "cal-plan-dot";
+    cell.appendChild(dot);
+  }
+  cell.addEventListener("click", ()=> openDaySheet(dstr));
+  return cell;
+}
+
+/* ============ 日付シート（カレンダーからのアクション） ============ */
+function openDaySheet(dstr){
+  const html = `
+    <div class="sheet-handle"></div>
+    <button class="sheet-close" aria-label="閉じる">✕</button>
+    <h2>${formatJPDate(dstr)}(${formatJPDow(dstr)})</h2>
+    <button class="action-btn" data-act="budget"><span class="ico">🥧</span>わけわけタイムを見る・編集する</button>
+    <button class="action-btn" data-act="plan"><span class="ico">🕒</span>じかんわり計画を見る・編集する</button>
+    <button class="action-btn" data-act="copy"><span class="ico">📋</span>この日の内容を他の日にコピーする</button>
+  `;
+  const modal = openModal(html);
+  modal.querySelector('[data-act="budget"]').addEventListener("click", ()=>{
+    currentDate = dstr; closeModal(); switchTab("budget");
+  });
+  modal.querySelector('[data-act="plan"]').addEventListener("click", ()=>{
+    currentDate = dstr; closeModal(); switchTab("plan");
+  });
+  modal.querySelector('[data-act="copy"]').addEventListener("click", ()=>{
+    closeModal(); openCopySheet(dstr);
+  });
+}
+
+/* ============ コピー機能 ============ */
+function openCopySheet(sourceDate){
+  const todayS = todayStr();
+  const html = `
+    <div class="sheet-handle"></div>
+    <button class="sheet-close" aria-label="閉じる">✕</button>
+    <h2>${formatJPDate(sourceDate)}の内容をコピー</h2>
+    <div class="copy-options" id="copyOptions">
+      <div class="opt-card selected" data-mode="pick">
+        <b>特定の日を選ぶ</b><small>カレンダーから複数の日をタップして選択</small>
+        <div class="opt-body">
+          <div class="multi-cal" id="pickCal"></div>
+        </div>
+      </div>
+      <div class="opt-card" data-mode="weekday">
+        <b>曜日で指定</b><small>例：毎週月・水・金に貼り付け</small>
+        <div class="opt-body">
+          <div class="weekday-picker" id="weekdayPicker">
+            ${WEEKDAY_JP.map((w,i)=>`<button type="button" data-dow="${i}">${w}</button>`).join("")}
+          </div>
+          <div class="range-row">
+            <input type="date" id="wdFrom" value="${todayS}">〜<input type="date" id="wdTo" value="${addDaysStr(todayS,27)}">
+          </div>
+        </div>
+      </div>
+      <div class="opt-card" data-mode="range">
+        <b>期間で指定</b><small>◯日〜×日まで毎日、同じ内容にする</small>
+        <div class="opt-body">
+          <div class="range-row">
+            <input type="date" id="rgFrom" value="${todayS}">〜<input type="date" id="rgTo" value="${addDaysStr(todayS,6)}">
+          </div>
+        </div>
+      </div>
+    </div>
+    <label class="checkbox-row"><input type="checkbox" id="includePlans" checked> 計画（じかんわり）の内容も含める</label>
+    <div class="form-error" id="copyError" hidden></div>
+    <div class="form-actions">
+      <button type="button" class="btn-ghost" id="copyCancelBtn">キャンセル</button>
+      <button type="button" class="btn-primary" id="copyConfirmBtn">貼り付ける</button>
+    </div>
+  `;
+  const modal = openModal(html);
+
+  const optCards = modal.querySelectorAll(".opt-card");
+  optCards.forEach(card=>{
+    card.addEventListener("click", (e)=>{
+      if(e.target.closest("input,button[data-dow]")) return;
+      optCards.forEach(c=>c.classList.remove("selected"));
+      card.classList.add("selected");
+    });
+  });
+
+  // 特定の日を選ぶ用ミニカレンダー（今日から60日）
+  const pickCal = modal.querySelector("#pickCal");
+  const pickedDates = new Set();
+  for(let i=0;i<60;i++){
+    const dstr = addDaysStr(todayS, i);
+    const d = strToDate(dstr);
+    const cell = document.createElement("button");
+    cell.type="button";
+    cell.className="cal-day compact";
+    cell.innerHTML = `<span class="cal-daynum">${d.getMonth()+1}/${d.getDate()}</span>`;
+    cell.addEventListener("click", ()=>{
+      if(pickedDates.has(dstr)){ pickedDates.delete(dstr); cell.classList.remove("selected"); }
+      else{ pickedDates.add(dstr); cell.classList.add("selected"); }
+    });
+    pickCal.appendChild(cell);
+  }
+
+  const weekdayPicker = modal.querySelector("#weekdayPicker");
+  const pickedDow = new Set();
+  weekdayPicker.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const dow = Number(btn.dataset.dow);
+      if(pickedDow.has(dow)){ pickedDow.delete(dow); btn.classList.remove("active"); }
+      else{ pickedDow.add(dow); btn.classList.add("active"); }
+    });
+  });
+
+  modal.querySelector("#copyCancelBtn").addEventListener("click", closeModal);
+  modal.querySelector("#copyConfirmBtn").addEventListener("click", ()=>{
+    const mode = modal.querySelector(".opt-card.selected").dataset.mode;
+    const includePlans = modal.querySelector("#includePlans").checked;
+    const errEl = modal.querySelector("#copyError");
+    errEl.hidden = true;
+
+    let targets = [];
+    if(mode==="pick"){
+      targets = Array.from(pickedDates);
+      if(targets.length===0){ errEl.textContent="コピー先の日を1つ以上選んでください"; errEl.hidden=false; return; }
+    }else if(mode==="weekday"){
+      const from = modal.querySelector("#wdFrom").value;
+      const to = modal.querySelector("#wdTo").value;
+      if(!from || !to || from>to || pickedDow.size===0){
+        errEl.textContent="曜日と期間を正しく指定してください"; errEl.hidden=false; return;
+      }
+      let cursor = from;
+      while(cursor<=to){
+        if(pickedDow.has(strToDate(cursor).getDay())) targets.push(cursor);
+        cursor = addDaysStr(cursor,1);
+      }
+    }else{
+      const from = modal.querySelector("#rgFrom").value;
+      const to = modal.querySelector("#rgTo").value;
+      if(!from || !to || from>to){ errEl.textContent="期間を正しく指定してください"; errEl.hidden=false; return; }
+      let cursor = from;
+      while(cursor<=to){ targets.push(cursor); cursor = addDaysStr(cursor,1); }
+    }
+
+    const srcBudget = getBudgetsFor(sourceDate);
+    const srcPlans = getPlansFor(sourceDate);
+    const todayNow = todayStr();
+    let count = 0;
+    targets.forEach(t=>{
+      if(t===sourceDate) return;
+      budgets[t] = {...srcBudget};
+      if(includePlans && t>=todayNow){
+        plans[t] = srcPlans.map(p=>({...p, id:uid(), done:false}));
+      }
+      count++;
+    });
+    saveJSON(LS_BUDGETS, budgets);
+    saveJSON(LS_PLANS, plans);
+    closeModal();
+    showToast(`${count}日にコピーしました。内容は個別に編集できます`);
+    renderCalendar();
+    if(currentTab==="budget") renderBudgetView();
+    if(currentTab==="plan") renderPlanView();
+  });
+}
+
+/* ============ 設定モーダル（カテゴリ名） ============ */
+function openSettingsModal(){
+  const rows = categories.map(cat=>`
+    <div class="settings-row" data-catid="${cat.id}">
+      <span class="swatch" style="background:${cat.color}"></span>
+      <input type="text" maxlength="12" placeholder="未設定" value="${escapeHtml(cat.name)}">
+    </div>`).join("");
+  const html = `
+    <div class="sheet-handle"></div>
+    <button class="sheet-close" aria-label="閉じる">✕</button>
+    <h2>カテゴリ設定</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;">12色それぞれに名前をつけると、以後は自動で毎日使えます</p>
+    <div id="settingsRows">${rows}</div>
+  `;
+  const modal = openModal(html);
+  modal.querySelectorAll(".settings-row").forEach(row=>{
+    const input = row.querySelector("input");
+    input.addEventListener("change", ()=>{
+      const cat = getCat(row.dataset.catid);
+      cat.name = input.value.trim();
+      saveJSON(LS_CATS, categories);
+      renderBudgetView();
+      if(currentTab==="plan") renderPlanView();
+    });
+  });
+}
+
+/* ============ モーダル基盤 ============ */
+function openModal(innerHtml){
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = "";
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  const sheet = document.createElement("div");
+  sheet.className = "sheet";
+  sheet.style.position = "relative";
+  sheet.innerHTML = innerHtml;
+  overlay.appendChild(sheet);
+  root.appendChild(overlay);
+  overlay.addEventListener("click", (e)=>{ if(e.target===overlay) closeModal(); });
+  sheet.querySelector(".sheet-close")?.addEventListener("click", closeModal);
+  return sheet;
+}
+function closeModal(){
+  document.getElementById("modalRoot").innerHTML = "";
+}
+
+/* ============ タブ切替 ============ */
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===tab));
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-"+tab).classList.add("active");
+  renderHeader();
+  if(tab==="budget") renderBudgetView();
+  else if(tab==="plan") renderPlanView();
+  else renderCalendar();
+}
+
+/* ============ イベント登録 ============ */
+document.querySelectorAll(".tab").forEach(btn=>{
+  btn.addEventListener("click", ()=>switchTab(btn.dataset.tab));
+});
+
+document.getElementById("prevDay").addEventListener("click", ()=>{
+  currentDate = addDaysStr(currentDate, -1);
+  renderHeader(); renderBudgetView(); if(currentTab==="plan") renderPlanView();
+});
+document.getElementById("nextDay").addEventListener("click", ()=>{
+  currentDate = addDaysStr(currentDate, 1);
+  renderHeader(); renderBudgetView(); if(currentTab==="plan") renderPlanView();
+});
+document.getElementById("dateLabelBtn").addEventListener("click", ()=>{
+  currentDate = todayStr();
+  renderHeader(); renderBudgetView(); if(currentTab==="plan") renderPlanView();
+});
+
+document.getElementById("settingsBtn").addEventListener("click", openSettingsModal);
+document.getElementById("onboardBtn").addEventListener("click", openSettingsModal);
+document.getElementById("addColorBtn").addEventListener("click", openSettingsModal);
+
+document.querySelectorAll(".plan-toggle button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".plan-toggle button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    planViewMode = btn.dataset.view;
+    renderPlanView();
+  });
+});
+
+const addPlanBtn = document.getElementById("addPlanBtn");
+const planForm = document.getElementById("planForm");
+addPlanBtn.addEventListener("click", ()=>{
+  if(namedCats().length===0){ showToast("先に⚙設定で色に名前をつけてください"); return; }
+  planForm.hidden = !planForm.hidden;
+  addPlanBtn.textContent = planForm.hidden ? "＋ 予定を追加" : "－ フォームを閉じる";
+});
+document.getElementById("cancelPlanBtn").addEventListener("click", ()=>{
+  planForm.hidden = true; addPlanBtn.textContent = "＋ 予定を追加";
+  document.getElementById("planFormError").hidden = true;
+});
+planForm.addEventListener("submit", (e)=>{
+  e.preventDefault();
+  const catChips = document.getElementById("planCatChips");
+  const catId = catChips.dataset.selected;
+  const errEl = document.getElementById("planFormError");
+  const startStr = document.getElementById("planStart").value;
+  const endStr = document.getElementById("planEnd").value;
+  if(!catId){ errEl.textContent="カテゴリを選んでください"; errEl.hidden=false; return; }
+  if(!startStr || !endStr){ errEl.textContent="開始と終了の時刻を入力してください"; errEl.hidden=false; return; }
+  const start = timeStrToMinutes(startStr);
+  const end = timeStrToMinutes(endStr);
+  if(end<=start){ errEl.textContent="終了は開始より後の時刻にしてください"; errEl.hidden=false; return; }
+  errEl.hidden = true;
+  const label = document.getElementById("planLabel").value.trim();
+  addPlanItem(currentDate, { id:uid(), catId, start, end, label, done:false });
+  planForm.reset();
+  planForm.hidden = true;
+  addPlanBtn.textContent = "＋ 予定を追加";
+  renderPlanView();
+});
+
+document.querySelectorAll(".cal-scale button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".cal-scale button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    calScale = btn.dataset.scale;
+    renderCalendar();
+  });
+});
+document.getElementById("calPrev").addEventListener("click", ()=>{
+  const step = calScale==="week" ? -7 : (calScale==="month" ? -30 : -90);
+  calAnchor = addDaysStr(calAnchor, step);
+  renderCalendar();
+});
+document.getElementById("calNext").addEventListener("click", ()=>{
+  const step = calScale==="week" ? 7 : (calScale==="month" ? 30 : 90);
+  calAnchor = addDaysStr(calAnchor, step);
+  renderCalendar();
+});
+
+/* ============ 初期描画 ============ */
+renderHeader();
+renderBudgetView();
+setInterval(()=>{
+  if(currentTab==="plan" && currentDate===todayStr()) renderPlanView();
+}, 30000);
+
+/* ============ Service Worker 登録 ============ */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{ /* オフライン非対応でも動作は継続 */ });
+  });
+}
+
+})();
+</script>
+</body>
+</html>
